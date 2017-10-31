@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 from query import Logs
 from decimal import Decimal
 
