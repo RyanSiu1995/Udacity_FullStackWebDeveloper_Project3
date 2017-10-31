@@ -1,32 +1,5 @@
 import psycopg2 as psql
 
-# Simple remark in table structure:
-#
-# TABLE articles (
-#     author integer NOT NULL,
-#     title text NOT NULL,
-#     slug text NOT NULL,
-#     lead text,
-#     body text,
-#     "time" timestamp with time zone DEFAULT now(),
-#     id integer NOT NULL
-# )
-#
-# TABLE authors (
-#     name text NOT NULL,
-#     bio text,
-#     id integer NOT NULL
-# )
-#
-# TABLE log (
-#     path text,
-#     ip inet,
-#     method text,
-#     status text,
-#     "time" timestamp with time zone DEFAULT now(),
-#     id integer NOT NULL
-# )
-
 
 class Logs:
     def __init__(self, database):
@@ -80,11 +53,21 @@ class Logs:
             ''', ("/article/", number))
         return cursor.fetchall()
 
-    def errorReport(self, percentage):
+    def errorReport(self):
         cursor = self.connect.cursor()
-        cursor.execute()
+        cursor.execute(
+            """
+            select totalCount.day,
+            errorRequest/totalRequest::float * 100 as errorPercentage
+            from (select date_trunc('day', time) as day,
+            count(status) as totalRequest
+            from log
+            group by day) as totalCount left join
+            (select date_trunc('day', time) as day,
+            count(status) as errorRequest
+            from (select * from log where status like '%40%') as errorLog
+            group by day) as errorCount
+            on totalCount.day = errorCount.day
+            where errorRequest/totalRequest::float * 100 > 1
+            """)
         return cursor.fetchall()
-
-if __name__ == "__main__":
-    log = Logs('news')
-    print(log.popularAuthors())
